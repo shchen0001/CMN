@@ -55,46 +55,18 @@ class CMN(nn.Module):
         x = (x.view(x.size(0), x.size(1), -1)).transpose(-1, -2)
         x = self.MLP1(self.lnorm1(x)).transpose(-1, -2)
 
-        concept_v_new1 = self.MLP2(self.lnorm2(self.concept_v))
+        concept_v1 = self.MLP2(self.lnorm2(self.concept_v))
 
-        A = torch.einsum('if, bfr->bir', concept_v_new1, x)
+        A = torch.einsum('if, bfr->bir', concept_v1, x)
         A = nn.Softmax(dim = -1)(F.normalize(A)*A.shape[-1])
-        # A = nn.Softmax(dim = -1)(F.normalize(A)*A.shape[-1]*4)  # compute an attention map for each concept
         F_p = torch.einsum('bir, bfr->bif', A, x)     # compute concept related visual features
-        concept_v_new2 = self.MLP3(self.lnorm3(self.concept_v))
-        Pred_concept_orig = torch.einsum('if, bif->bi', F.normalize(concept_v_new2), F.normalize(F_p))
+        concept_v2 = self.MLP3(self.lnorm3(self.concept_v))
+        Pred_concept = torch.einsum('if, bif->bi', F.normalize(concept_v2), F.normalize(F_p))
 
         if self.is_norm:
-            Pred_concept = self.l2_norm(Pred_concept_orig)
+            Pred_concept = self.l2_norm(Pred_concept)
         
         return Pred_concept
-
-    def forward2(self, x):
-        x = self.model.conv1(x)
-        x = self.model.bn1(x)
-        x = self.model.relu(x)
-        x = self.model.maxpool(x)
-        x = self.model.layer1(x)
-        x = self.model.layer2(x)
-        x = self.model.layer3(x)
-        x = self.model.layer4(x)
-
-        x = (x.view(x.size(0), x.size(1), -1)).transpose(-1, -2)
-        x = self.MLP1(self.lnorm1(x)).transpose(-1, -2)
-
-        concept_v_new1 = self.MLP2(self.lnorm2(self.concept_v))
-
-        A = torch.einsum('if, bfr->bir', concept_v_new1, x)
-        # A = nn.Softmax(dim = -1)(F.normalize(A)*A.shape[-1])
-        A = nn.Softmax(dim = -1)(F.normalize(A)*A.shape[-1]*4)  # compute an attention map for each concept
-        F_p = torch.einsum('bir, bfr->bif', A, x)     # compute concept related visual features
-        concept_v_new2 = self.MLP3(self.lnorm3(self.concept_v))
-        Pred_concept_orig = torch.einsum('if, bif->bi', F.normalize(concept_v_new2), F.normalize(F_p))
-
-        if self.is_norm:
-            Pred_concept = self.l2_norm(Pred_concept_orig)
-        
-        return Pred_concept, Pred_concept_orig, A
 
     def _initialize_weights(self):
         init.kaiming_normal_(self.MLP1.weight, mode='fan_out')
